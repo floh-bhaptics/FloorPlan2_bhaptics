@@ -18,20 +18,21 @@ namespace MyBhapticsTactsuit
         public bool suitDisabled = true;
         public bool systemInitialized = false;
         // Event to start and stop the heartbeat thread
-        private static ManualResetEvent HeartBeat_mrse = new ManualResetEvent(false);
+        private static ManualResetEvent Pouch_mrse = new ManualResetEvent(false);
         // dictionary of all feedback patterns found in the bHaptics directory
         public Dictionary<String, FileInfo> FeedbackMap = new Dictionary<String, FileInfo>();
 
         private static bHaptics.RotationOption defaultRotationOption = new bHaptics.RotationOption(0.0f, 0.0f);
+        private static bool handConnected = false;
 
-        public void HeartBeatFunc()
+        public void PouchFunc()
         {
             while (true)
             {
                 // Check if reset event is active
-                HeartBeat_mrse.WaitOne();
-                bHaptics.SubmitRegistered("HeartBeat");
-                Thread.Sleep(600);
+                Pouch_mrse.WaitOne();
+                bHaptics.SubmitRegistered("PouchOpened");
+                Thread.Sleep(1010);
             }
         }
 
@@ -42,10 +43,11 @@ namespace MyBhapticsTactsuit
             {
                 suitDisabled = false;
             }
+            if (bHaptics.IsDeviceConnected(bHaptics.DeviceType.Tactosy_hands)) handConnected = true;
             RegisterAllTactFiles();
-            LOG("Starting HeartBeat thread...");
-            Thread HeartBeatThread = new Thread(HeartBeatFunc);
-            HeartBeatThread.Start();
+            LOG("Starting threads...");
+            Thread PouchThread = new Thread(PouchFunc);
+            PouchThread.Start();
         }
 
         public void LOG(string logStr)
@@ -101,75 +103,28 @@ namespace MyBhapticsTactsuit
             }
         }
 
-        public void PlayBackHit(String key, float xzAngle, float yShift)
+        public void HandEffect(string effectName, bool isRightHand)
         {
-            // two parameters can be given to the pattern to move it on the vest:
-            // 1. An angle in degrees [0, 360] to turn the pattern to the left
-            // 2. A shift [-0.5, 0.5] in y-direction (up and down) to move it up or down
-            bHaptics.ScaleOption scaleOption = new bHaptics.ScaleOption(1f, 1f);
-            bHaptics.RotationOption rotationOption = new bHaptics.RotationOption(xzAngle, yShift);
-            bHaptics.SubmitRegistered(key, key, scaleOption, rotationOption);
-        }
-
-        public void Recoil(string weaponName, bool isRightHand, bool twoHanded, float intensity = 1.0f)
-        {
-            // weaponName is a parameter that will go into the vest feedback pattern name
-            // isRightHand is just which side the feedback is on
-            // intensity should usually be between 0 and 1
-
-
-            float duration = 1.0f;
-            var scaleOption = new bHaptics.ScaleOption(intensity, duration);
-            // the function needs some rotation if you want to give the scale option as well
-            var rotationFront = new bHaptics.RotationOption(0f, 0f);
-            // make postfix according to parameter
+            LOG("Hand: " + effectName);
             string postfix = "_L";
-            string otherPostfix = "_R";
-            if (isRightHand) { postfix = "_R"; otherPostfix = "_L"; }
+            if (isRightHand) { postfix = "_R";}
 
-            // stitch together pattern names for Arm and Hand recoil
-            string keyHand = "RecoilHands" + postfix;
-            string keyArm = "Recoil" + postfix;
-            string keyOtherHand = "RecoilHands" + otherPostfix;
-            string keyOtherArm = "Recoil" + otherPostfix;
-            // vest pattern name contains the weapon name. This way, you can quickly switch
-            // between swords, pistols, shotguns, ... by just changing the shoulder feedback
-            // and scaling via the intensity for arms and hands
-            string keyVest = "Recoil" + weaponName + "Vest" + postfix;
-            if ((bHaptics.IsPlaying(keyArm)) | (bHaptics.IsPlaying(keyHand)) | (bHaptics.IsPlaying(keyVest))) return;
-            bHaptics.SubmitRegistered(keyHand, keyHand, scaleOption, rotationFront);
-            bHaptics.SubmitRegistered(keyArm, keyArm, scaleOption, rotationFront);
-            bHaptics.SubmitRegistered(keyVest, keyVest, scaleOption, rotationFront);
-            if (twoHanded)
-            {
-                bHaptics.SubmitRegistered(keyOtherHand, keyOtherHand, scaleOption, rotationFront);
-                bHaptics.SubmitRegistered(keyOtherArm, keyOtherArm, scaleOption, rotationFront);
-            }
+            string keyHand = effectName + "Hand" + postfix;
+            string keyArm = effectName + "Arm" + postfix;
+            if (handConnected) PlaybackHaptics(keyHand);
+            else PlaybackHaptics(keyArm);
         }
 
 
-        public void HeadShot(String key, float hitAngle)
+        public void StartPouch()
         {
-            // I made 4 patterns in the Tactal for fron/back/left/right headshots
-            if (bHaptics.IsDeviceConnected(bHaptics.DeviceType.Tactal))
-            {
-                if ((hitAngle < 45f) | (hitAngle > 315f)) { PlaybackHaptics("Headshot_F"); }
-                if ((hitAngle > 45f) && (hitAngle < 135f)) { PlaybackHaptics("Headshot_L"); }
-                if ((hitAngle > 135f) && (hitAngle < 225f)) { PlaybackHaptics("Headshot_B"); }
-                if ((hitAngle > 225f) && (hitAngle < 315f)) { PlaybackHaptics("Headshot_R"); }
-            }
-            // If there is no Tactal, just forward to the vest  with angle and at the very top (0.5)
-            else { PlayBackHit(key, hitAngle, 0.5f); }
+            Pouch_mrse.Set();
         }
 
-        public void StartHeartBeat()
+        public void StopPouch()
         {
-            HeartBeat_mrse.Set();
-        }
-
-        public void StopHeartBeat()
-        {
-            HeartBeat_mrse.Reset();
+            Pouch_mrse.Reset();
+            StopHapticFeedback("PouchOpened");
         }
 
         public bool IsPlaying(String effect)
@@ -195,7 +150,7 @@ namespace MyBhapticsTactsuit
         {
             // Yes, looks silly here, but if you have several threads like this, this is
             // very useful when the player dies or starts a new level
-            StopHeartBeat();
+            StopPouch();
         }
 
 
