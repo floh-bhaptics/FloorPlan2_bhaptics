@@ -16,6 +16,11 @@ namespace FloorPlan2_bhaptics
     public class FloorPlan2_bhaptics : MelonMod
     {
         public static TactsuitVR tactsuitVr;
+        public static bool rightGrabDown = false;
+        public static bool rightGrabUp = false;
+        public static bool leftGrabDown = false;
+        public static bool leftGrabUp = false;
+        public static bool lastGrabbedRight = true;
 
         public override void OnApplicationStart()
         {
@@ -53,25 +58,30 @@ namespace FloorPlan2_bhaptics
         public class bhaptics_PlayFart
         {
             [HarmonyPostfix]
-            public static void Postfix(TButt.TBInput.Controller controller)
+            public static void Postfix(TBInput.Controller controller)
             {
                 bool isRightHand = false;
-                if (controller == TButt.TBInput.Controller.RHandController) isRightHand = true;
+                if (controller == TBInput.Controller.RHandController) isRightHand = true;
                 tactsuitVr.HandEffect("Fart", isRightHand);
             }
         }
 
-        [HarmonyPatch(typeof(HandSkinData), "PlayGrabSound", new Type[] { typeof(Transform), typeof(HandSkinData.HandID) })]
-        public class bhaptics_HandGrab
+        [HarmonyPatch(typeof(PlayerHandSkinManager), "GrabButtonDown", new Type[] { typeof(TBInput.Controller), typeof(Transform) })]
+        public class bhaptics_HandGrabDown
         {
             [HarmonyPostfix]
-            public static void Postfix(HandSkinData.HandID hand)
+            public static void Postfix(TBInput.Controller controller)
             {
-                //if (hand == HandSkinData.HandID.Right) tactsuitVr.LOG("Grab right");
-                //else tactsuitVr.LOG("Grab left");
+                try
+                {
+                    if (controller == TBInput.Controller.RHandController) rightGrabDown = true;
+                    else leftGrabDown = true;
+                }
+                catch { }
             }
         }
-        
+
+
         [HarmonyPatch(typeof(PlayerHandSelfActions), "Clap", new Type[] { typeof(Vector3) })]
         public class bhaptics_HandClap
         {
@@ -131,7 +141,57 @@ namespace FloorPlan2_bhaptics
                 if (!instantly) tactsuitVr.PlaybackHaptics("TeleportThrough");
             }
         }
-        
+
+        public static bool isRightHandGrabbing()
+        {
+            tactsuitVr.LOG(" " + rightGrabDown.ToString() + " " + rightGrabUp.ToString() + " " + leftGrabDown.ToString() + " " + leftGrabUp.ToString());
+            if (rightGrabDown) return true;
+            if (leftGrabDown) return false;
+            return lastGrabbedRight;
+        }
+
+        public static void releaseGrabs()
+        {
+            lastGrabbedRight = isRightHandGrabbing();
+            rightGrabUp = false;
+            rightGrabDown = false;
+            leftGrabUp = false;
+            leftGrabDown = false;
+        }
+
+        [HarmonyPatch(typeof(TextBox), "ChooseYesOrNo", new Type[] { typeof(bool) })]
+        public class bhaptics_ChooseYesOrNo
+        {
+            [HarmonyPostfix]
+            public static void Postfix(bool yes)
+            {
+                if (yes) tactsuitVr.HandEffect("ThumbsUp", isRightHandGrabbing());
+                else tactsuitVr.HandEffect("ThumbsDown", isRightHandGrabbing());
+                releaseGrabs();
+            }
+        }
+
+        [HarmonyPatch(typeof(TextBox), "ChooseContinue", new Type[] {  })]
+        public class bhaptics_ChooseContinue
+        {
+            [HarmonyPostfix]
+            public static void Postfix()
+            {
+                //tactsuitVr.LOG("Continue");
+                tactsuitVr.HandEffect("ThumbsUp", isRightHandGrabbing());
+                releaseGrabs();
+            }
+        }
+
+        [HarmonyPatch(typeof(TextBox), "Initialize", new Type[] { })]
+        public class bhaptics_InitializeBox
+        {
+            [HarmonyPostfix]
+            public static void Postfix()
+            {
+                releaseGrabs();
+            }
+        }
 
     }
 }
