@@ -16,10 +16,8 @@ namespace FloorPlan2_bhaptics
     public class FloorPlan2_bhaptics : MelonMod
     {
         public static TactsuitVR tactsuitVr;
-        public static bool rightGrabDown = false;
-        public static bool rightGrabUp = false;
-        public static bool leftGrabDown = false;
-        public static bool leftGrabUp = false;
+        public static bool rightGrab = false;
+        public static bool leftGrab = false;
         public static bool lastGrabbedRight = true;
 
         public override void OnApplicationStart()
@@ -29,7 +27,19 @@ namespace FloorPlan2_bhaptics
             tactsuitVr.PlaybackHaptics("HeartBeat");
         }
 
-        
+        #region World interaction
+
+        [HarmonyPatch(typeof(TButt.Locomotion.TBTeleportManager), "TeleportToPoint", new Type[] { typeof(TButt.Locomotion.TBTeleportPoint), typeof(bool) })]
+        public class bhaptics_Teleport
+        {
+            [HarmonyPostfix]
+            public static void Postfix(bool instantly)
+            {
+                if (!instantly) tactsuitVr.PlaybackHaptics("TeleportThrough");
+            }
+        }
+
+
         [HarmonyPatch(typeof(Elevator), "DepartedFloor", new Type[] { typeof(Floor) })]
         public class bhaptics_MoveElevator
         {
@@ -52,8 +62,10 @@ namespace FloorPlan2_bhaptics
             }
         }
 
+        #endregion
 
-        
+        #region Hand animation
+
         [HarmonyPatch(typeof(ButtHandSkinData), "PlayFart", new Type[] { typeof(TBInput.Controller) })]
         public class bhaptics_PlayFart
         {
@@ -65,22 +77,6 @@ namespace FloorPlan2_bhaptics
                 tactsuitVr.HandEffect("Fart", isRightHand);
             }
         }
-
-        [HarmonyPatch(typeof(PlayerHandSkinManager), "GrabButtonDown", new Type[] { typeof(TBInput.Controller), typeof(Transform) })]
-        public class bhaptics_HandGrabDown
-        {
-            [HarmonyPostfix]
-            public static void Postfix(TBInput.Controller controller)
-            {
-                try
-                {
-                    if (controller == TBInput.Controller.RHandController) rightGrabDown = true;
-                    else leftGrabDown = true;
-                }
-                catch { }
-            }
-        }
-
 
         [HarmonyPatch(typeof(PlayerHandSelfActions), "Clap", new Type[] { typeof(Vector3) })]
         public class bhaptics_HandClap
@@ -95,31 +91,6 @@ namespace FloorPlan2_bhaptics
             }
         }
 
-        [HarmonyPatch(typeof(PlayerHandSelfActions), "ThumbsUp", new Type[] { typeof(TBInput.Controller) })]
-        public class bhaptics_ThumbsUp
-        {
-            [HarmonyPostfix]
-            public static void Postfix(TBInput.Controller controller)
-            {
-                tactsuitVr.LOG("ThumbsyUppy");
-                bool isRightHand = false;
-                if (controller == TBInput.Controller.RHandController) isRightHand = true;
-                tactsuitVr.HandEffect("ThumbsUp", isRightHand);
-            }
-        }
-
-        [HarmonyPatch(typeof(PlayerHandSelfActions), "ThumbsDown", new Type[] { typeof(TBInput.Controller) })]
-        public class bhaptics_ThumbsDown
-        {
-            [HarmonyPostfix]
-            public static void Postfix(TBInput.Controller controller)
-            {
-                bool isRightHand = false;
-                if (controller == TBInput.Controller.RHandController) isRightHand = true;
-                tactsuitVr.HandEffect("ThumbsDown", isRightHand);
-            }
-        }
-
         [HarmonyPatch(typeof(PlayerHandSelfActions), "Smack", new Type[] { typeof(TBInput.Controller), typeof(Vector3) })]
         public class bhaptics_Smack
         {
@@ -131,43 +102,51 @@ namespace FloorPlan2_bhaptics
                 tactsuitVr.HandEffect("Smack", isRightHand);
             }
         }
-        
-        [HarmonyPatch(typeof(TButt.Locomotion.TBTeleportManager), "TeleportToPoint", new Type[] { typeof(TButt.Locomotion.TBTeleportPoint), typeof(bool) })]
-        public class bhaptics_Teleport
-        {
-            [HarmonyPostfix]
-            public static void Postfix(bool instantly)
-            {
-                if (!instantly) tactsuitVr.PlaybackHaptics("TeleportThrough");
-            }
-        }
+
+        #endregion
+
+        #region Thumbsup and -down
 
         public static bool isRightHandGrabbing()
         {
-            tactsuitVr.LOG(" " + rightGrabDown.ToString() + " " + rightGrabUp.ToString() + " " + leftGrabDown.ToString() + " " + leftGrabUp.ToString());
-            if (rightGrabDown) return true;
-            if (leftGrabDown) return false;
+            //tactsuitVr.LOG(" " + rightGrab.ToString() + leftGrab.ToString());
+            if (rightGrab) return true;
+            if (leftGrab) return false;
             return lastGrabbedRight;
         }
 
         public static void releaseGrabs()
         {
             lastGrabbedRight = isRightHandGrabbing();
-            rightGrabUp = false;
-            rightGrabDown = false;
-            leftGrabUp = false;
-            leftGrabDown = false;
+            rightGrab = false;
+            leftGrab = false;
+        }
+
+        [HarmonyPatch(typeof(PlayerHandSkinManager), "GrabButtonDown", new Type[] { typeof(TBInput.Controller), typeof(Transform) })]
+        public class bhaptics_HandGrabDown
+        {
+            [HarmonyPostfix]
+            public static void Postfix(TBInput.Controller controller)
+            {
+                try
+                {
+                    if (controller == TBInput.Controller.RHandController) { rightGrab = true; leftGrab = false; }
+                    else { leftGrab = true; rightGrab = false; }
+                }
+                catch { }
+            }
         }
 
         [HarmonyPatch(typeof(TextBox), "ChooseYesOrNo", new Type[] { typeof(bool) })]
         public class bhaptics_ChooseYesOrNo
         {
             [HarmonyPostfix]
-            public static void Postfix(bool yes)
+            public static bool Prefix(bool yes)
             {
                 if (yes) tactsuitVr.HandEffect("ThumbsUp", isRightHandGrabbing());
                 else tactsuitVr.HandEffect("ThumbsDown", isRightHandGrabbing());
                 releaseGrabs();
+                return true;
             }
         }
 
@@ -175,11 +154,12 @@ namespace FloorPlan2_bhaptics
         public class bhaptics_ChooseContinue
         {
             [HarmonyPostfix]
-            public static void Postfix()
+            public static bool Prefix()
             {
                 //tactsuitVr.LOG("Continue");
                 tactsuitVr.HandEffect("ThumbsUp", isRightHandGrabbing());
                 releaseGrabs();
+                return true;
             }
         }
 
@@ -192,6 +172,8 @@ namespace FloorPlan2_bhaptics
                 releaseGrabs();
             }
         }
+
+        #endregion
 
     }
 }

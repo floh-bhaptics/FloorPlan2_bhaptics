@@ -105,7 +105,7 @@ namespace MyBhapticsTactsuit
 
         public void HandEffect(string effectName, bool isRightHand)
         {
-            LOG("Hand: " + effectName);
+            //LOG("Hand: " + effectName);
             string postfix = "_L";
             if (isRightHand) { postfix = "_R";}
 
