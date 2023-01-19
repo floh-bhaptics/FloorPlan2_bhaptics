@@ -12,7 +12,7 @@ using UnityEngine;
 using Il2CppTButt;
 using Il2Cpp;
 
-[assembly: MelonInfo(typeof(FloorPlan2_bhaptics.FloorPlan2_bhaptics), "FloorPlan2_bhaptics", "1.1", "Florian Fahrenberger")]
+[assembly: MelonInfo(typeof(FloorPlan2_bhaptics.FloorPlan2_bhaptics), "FloorPlan2_bhaptics", "2.0.0", "Florian Fahrenberger")]
 [assembly: MelonGame("Turbo Button", "Floor Plan 2")]
 
 
