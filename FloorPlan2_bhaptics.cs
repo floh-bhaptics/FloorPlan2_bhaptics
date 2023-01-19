@@ -9,7 +9,8 @@ using HarmonyLib;
 using MyBhapticsTactsuit;
 
 using UnityEngine;
-using TButt;
+using Il2CppTButt;
+using Il2Cpp;
 
 [assembly: MelonInfo(typeof(FloorPlan2_bhaptics.FloorPlan2_bhaptics), "FloorPlan2_bhaptics", "1.1", "Florian Fahrenberger")]
 [assembly: MelonGame("Turbo Button", "Floor Plan 2")]
@@ -19,21 +20,20 @@ namespace FloorPlan2_bhaptics
 {
     public class FloorPlan2_bhaptics : MelonMod
     {
-        public static TactsuitVR tactsuitVr;
+        public static TactsuitVR tactsuitVr = null!;
         public static bool rightGrab = false;
         public static bool leftGrab = false;
         public static bool lastGrabbedRight = true;
 
-        public override void OnApplicationStart()
+        public override void OnInitializeMelon()
         {
-            base.OnApplicationStart();
             tactsuitVr = new TactsuitVR();
             tactsuitVr.PlaybackHaptics("HeartBeat");
         }
 
         #region World interaction
 
-        [HarmonyPatch(typeof(TButt.Locomotion.TBTeleportManager), "TeleportToPoint", new Type[] { typeof(TButt.Locomotion.TBTeleportPoint), typeof(bool) })]
+        [HarmonyPatch(typeof(Il2CppTButt.Locomotion.TBTeleportManager), "TeleportToPoint", new Type[] { typeof(Il2CppTButt.Locomotion.TBTeleportPoint), typeof(bool) })]
         public class bhaptics_Teleport
         {
             [HarmonyPostfix]

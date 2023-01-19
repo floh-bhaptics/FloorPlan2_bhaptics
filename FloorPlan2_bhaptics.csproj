@@ -44,6 +44,10 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="XCOPY &quot;$(ProjectDir)bHaptics\&quot; &quot;$(TargetDir)bHaptics\&quot; /S /Y" />
   </Target>
