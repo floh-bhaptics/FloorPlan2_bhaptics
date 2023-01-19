@@ -22,7 +22,7 @@ namespace MyBhapticsTactsuit
         // dictionary of all feedback patterns found in the bHaptics directory
         public Dictionary<String, FileInfo> FeedbackMap = new Dictionary<String, FileInfo>();
 
-        private static bHaptics.RotationOption defaultRotationOption = new bHaptics.RotationOption(0.0f, 0.0f);
+        private static bHapticsLib.RotationOption defaultRotationOption = new bHapticsLib.RotationOption(0.0f, 0.0f);
         private static bool handConnected = false;
 
         public void PouchFunc()
@@ -31,7 +31,7 @@ namespace MyBhapticsTactsuit
             {
                 // Check if reset event is active
                 Pouch_mrse.WaitOne();
-                bHaptics.SubmitRegistered("PouchOpened");
+                bHapticsLib.bHapticsManager.PlayRegistered("PouchOpened");
                 Thread.Sleep(1010);
             }
         }
@@ -39,11 +39,8 @@ namespace MyBhapticsTactsuit
         public TactsuitVR()
         {
             LOG("Initializing suit");
-            if (!bHaptics.WasError)
-            {
-                suitDisabled = false;
-            }
-            if (bHaptics.IsDeviceConnected(bHaptics.DeviceType.Tactosy_hands)) handConnected = true;
+            suitDisabled = false;
+            if (bHapticsLib.bHapticsManager.IsDeviceConnected(bHapticsLib.PositionID.HandLeft)) handConnected = true;
             RegisterAllTactFiles();
             LOG("Starting threads...");
             Thread PouchThread = new Thread(PouchFunc);
@@ -76,7 +73,7 @@ namespace MyBhapticsTactsuit
                 string tactFileStr = File.ReadAllText(fullName);
                 try
                 {
-                    bHaptics.RegisterFeedbackFromTactFile(prefix, tactFileStr);
+                    bHapticsLib.bHapticsManager.RegisterPatternFromJson(prefix, tactFileStr);
                     LOG("Pattern registered: " + prefix);
                 }
                 catch (Exception e) { LOG(e.ToString()); }
@@ -92,9 +89,9 @@ namespace MyBhapticsTactsuit
             if (FeedbackMap.ContainsKey(key))
             {
                 //LOG("ScaleOption");
-                bHaptics.ScaleOption scaleOption = new bHaptics.ScaleOption(intensity, duration);
+                bHapticsLib.ScaleOption scaleOption = new bHapticsLib.ScaleOption(intensity, duration);
                 //LOG("Submit");
-                bHaptics.SubmitRegistered(key, key, scaleOption, defaultRotationOption);
+                bHapticsLib.bHapticsManager.PlayRegistered(key, key, scaleOption, defaultRotationOption);
                 // LOG("Playing back: " + key);
             }
             else
@@ -129,12 +126,12 @@ namespace MyBhapticsTactsuit
 
         public bool IsPlaying(String effect)
         {
-            return bHaptics.IsPlaying(effect);
+            return bHapticsLib.bHapticsManager.IsPlaying(effect);
         }
 
         public void StopHapticFeedback(String effect)
         {
-            bHaptics.TurnOff(effect);
+            bHapticsLib.bHapticsManager.StopPlaying(effect);
         }
 
         public void StopAllHapticFeedback()
@@ -142,7 +139,7 @@ namespace MyBhapticsTactsuit
             StopThreads();
             foreach (String key in FeedbackMap.Keys)
             {
-                bHaptics.TurnOff(key);
+                bHapticsLib.bHapticsManager.StopPlaying(key);
             }
         }
 
