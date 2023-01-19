@@ -11,6 +11,10 @@ using MyBhapticsTactsuit;
 using UnityEngine;
 using TButt;
 
+[assembly: MelonInfo(typeof(FloorPlan2_bhaptics.FloorPlan2_bhaptics), "FloorPlan2_bhaptics", "1.1", "Florian Fahrenberger")]
+[assembly: MelonGame("Turbo Button", "Floor Plan 2")]
+
+
 namespace FloorPlan2_bhaptics
 {
     public class FloorPlan2_bhaptics : MelonMod
